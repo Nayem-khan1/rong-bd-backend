@@ -1,112 +1,57 @@
 import userModel from "../models/userModel.js";
-import bcrypt from "bcrypt";
-import validator from "validator";
-import jwt from "jsonwebtoken";
 
-const createToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET);
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await userModel.find({}, { password: 0 });
+    res.json({ success: true, data: users });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
 };
 
-// Route for user login
-const loginUser = async (req, res) => {
+const deleteUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { id } = req.params;
 
-    const user = await userModel.findOne({ email });
-
+    const user = await userModel.findById(id);
     if (!user) {
-      return res.json({ success: false, message: "User doesn't exist" });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (isMatch) {
-      const token = createToken(user._id);
-      const data = {
-        token,
-        name: user.name,
-        email: user.email,
-      }
-      res.json({ success: true, data });
-    } else {
-      res.json({ success: false, message: "Invalid credentials" });
+    // Prevent deleting other admins
+    if (user.role === "admin") {
+      return res.status(403).json({ success: false, message: "Cannot delete another admin" });
     }
+
+    await userModel.findByIdAndDelete(id);
+
+    res.json({ success: true, message: "User deleted successfully" });
+
   } catch (error) {
-    console.log(error);
     res.json({ success: false, message: error.message });
   }
 };
 
-// Route for user register
-const registerUser = async (req, res) => {
+const updateUserRole = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { id } = req.params;
+    const { role } = req.body;
 
-    // checking user already exists or not
-    const exists = await userModel.findOne({ email });
-    if (exists) {
-      return res.json({ success: false, message: "User already exists" });
+    if (!['user', 'admin'].includes(role)) {
+      return res.json({ success: false, message: "Invalid role" });
     }
 
-    // validating email format & strong password
-    if (!validator.isEmail(email)) {
-      return res.json({
-        success: false,
-        message: "Please enter a valid email",
-      });
-    }
-    if (password.length < 8) {
-      return res.json({
-        success: false,
-        message: "Please enter a strong password",
-      });
+    // 2. Prevent self-demotion from admin to user
+    if (req.user.id === id && role === 'user') {
+      return res.status(403).json({ success: false, message: "You cannot demote yourself from admin to user" });
     }
 
-    // hashing user password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const newUser = new userModel({
-      name,
-      email,
-      password: hashedPassword,
-    });
-
-    const user = await newUser.save();
-
-    const token = createToken(user._id);
-
-    const data = {
-      token,
-      name: user.name,
-      email: user.email,
-    }
-
-    res.json({ success: true, data });
+    const user = await userModel.findByIdAndUpdate(id, { role }, { new: true }).select("-password");
+    res.json({ success: true, data: user });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
   }
 };
 
-// Route for admin Login
-const adminLogin = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (
-      email === process.env.ADMIN_EMAIL &&
-      password === process.env.ADMIN_PASSWORD
-    ) {
-      const token = jwt.sign(email + password, process.env.JWT_SECRET);
-      res.json({ success: true, token });
-    } else {
-      res.json({ success: false, message: "Invalid credentials" });
-    }
-  } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
-  }
-};
-
-export { loginUser, registerUser, adminLogin };
+export {getAllUsers, deleteUser, updateUserRole};
