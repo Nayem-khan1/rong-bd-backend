@@ -8,6 +8,7 @@ import cartRouter from './routes/cartRoute.js';
 import orderRouter from './routes/orderRoute.js';
 import authRouter from './routes/authRoute.js';
 import userRouter from './routes/userRoute.js';
+import analyticsRouter from './routes/analyticsRoutes.js';
 
 //App config
 const app = express();
@@ -25,6 +26,7 @@ app.use('/api/product', productRouter)
 app.use('/api/cart', cartRouter)
 app.use('/api/order', orderRouter)
 app.use('/api/users', userRouter)
+app.use('/api/analytics', analyticsRouter)
 
 app.get('/', (req, res)=> {
     res.send("API Working")
