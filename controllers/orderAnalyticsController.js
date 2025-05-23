@@ -56,7 +56,7 @@ export const getOrderAnalytics = async (req, res) => {
     ]);
 
     // 7. Recent Orders (last 10)
-    const recent = await orderModel.find().sort({ date: -1 }).limit(10);
+    const recent = await orderModel.find().sort({ date: -1 }).limit(5);
 
     res.json({
       success: true,
