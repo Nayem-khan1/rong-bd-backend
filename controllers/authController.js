@@ -117,7 +117,13 @@ const adminLogin = async (req, res) => {
         expiresIn: "7d",
       }
     );
-    res.json({ success: true, token });
+      const data = {
+        token,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      };
+    res.json({ success: true, data });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
